@@ -1,0 +1,449 @@
+{
+	"dag": {},
+	"jobConfig": {
+		"command": "glueetl",
+		"description": "",
+		"role": "arn:aws:iam::376129875871:role/AWSETLServiceRoleNew",
+		"scriptName": "ETL GLUE JOB.py",
+		"version": "4.0",
+		"language": "python-3",
+		"scriptLocation": "s3://aws-glue-assets-376129875871-ap-south-1/scripts/",
+		"temporaryDirectory": "s3://aws-glue-assets-376129875871-ap-south-1/temporary/",
+		"timeout": 2880,
+		"maxConcurrentRuns": 1,
+		"workerType": "G.1X",
+		"numberOfWorkers": "5",
+		"maxRetries": 0,
+		"metrics": "",
+		"observabilityMetrics": "",
+		"security": "none",
+		"bookmark": "",
+		"logging": "",
+		"spark": false,
+		"sparkConfiguration": "standard",
+		"sparkPath": "",
+		"serverEncryption": false,
+		"glueHiveMetastore": true,
+		"etlAutoScaling": false,
+		"etlAutoTuning": false,
+		"etlAutoTuningJobRules": "",
+		"jobParameters": [],
+		"tags": [],
+		"connectionsList": [],
+		"jobMode": "NOTEBOOK_MODE",
+		"name": "ETL GLUE JOB",
+		"kernel": "glueetl",
+		"pythonPath": "",
+		"dependentPath": "",
+		"referencedPath": "",
+		"pythonShellPrebuiltLibraryOption": "analytics",
+		"pythonVersion": ""
+	},
+	"hasBeenSaved": false,
+	"script": "import sys\nfrom awsglue.transforms import *\nfrom awsglue.utils import getResolvedOptions\nfrom pyspark.context import SparkContext # start the spark application. RDD, DataFrame\nfrom awsglue.context import GlueContext # access the aws services\nfrom awsglue.job import Job\n  \nsc = SparkContext.getOrCreate()\nglueContext = GlueContext(sc)\nspark = glueContext.spark_session\njob = Job(glueContext)\nspark\n#ETL process\nextract the data from data catelog ( Sales, Customers )\n\ntransformation  - Join - CustomersalesDF\n\nload the data into s3 bucket - JSON\nsalesDF=glueContext.create_dynamic_frame.from_catalog(\n    database=\"salesdb\",\n    table_name=\"sales\")\n\ncustomersDF=glueContext.create_dynamic_frame.from_catalog(\n    database=\"salesdb\",\n    table_name=\"customers\")\nsalesDF.toDF().show()\nsalesDF.printSchema()\ncustomersDF.printSchema()\n# Transformation\n\ncustomersalesDF =Join.apply(salesDF,customersDF,\"customerid\",\"customerid\")\ncustomersalesDF.printSchema()\ncustomersalesDF=customersalesDF.drop_fields(['`.customerid`'])\ncustomersalesDF.printSchema()\ncustomersalesDF.toDF().show()\n# Load the data into s3 bucket - JSON, CSV, Parquat, AVro etc\ncustomersalesDF=glueContext.write_dynamic_frame.from_options(\n    connection_type=\"s3\",\n    connection_options={\"path\":\"s3://etljob2025/data/customersales\"},\n    format=\"json\",\n    frame=customersalesDF\n)\n\n\n# customerssalesDFspark=customerssalesDF.toDF()  - convert dynamic frame into spark dataframe\n# spark.write.option('csv')\ncustomersalesDF=glueContext.create_dynamic_frame.from_options(\n    connection_type=\"s3\",\n    connection_options={\"paths\":[\"s3://etljob2025/data/customersales\"]},\n    format=\"json\"\n)\n\n# read data from s3 bucket\ncustomersalesDF.toDF().show()\nsalesDF.toDF().show()\n# selectfields method with the dynamic frame to query rows with selected columns\n\nordersDF=SelectFields.apply(salesDF,[\"ordernumber\",\"sales\"])\nordersDF.toDF().show()\nhighsalesDF=Filter.apply(salesDF,f=lambda x:x[\"sales\"] > 12000)\nhighsalesDF.toDF().show()\nsalesDF=salesDF.toDF()\nsalesDF.groupby('productline').count().show()\nsalesDF.select(\"productline\",\"quantityordered\").groupby('productline').min().show()\nsalesDF.groupby('productline').agg({'quantityordered':'mean','sales':'sum','priceeach':'max'}).show()\nsalesDF.orderBy(salesDF.sales).show()\nsalesDF.orderBy(salesDF.sales.desc()).show()\ncustomersDF.toDF().show()\ndef addcolumns(rec):\n    rec[\"contactfullname\"]={}\n    rec[\"contactfullname\"]=rec[\"contactfirstname\"]+ ' ' + rec[\"contactlastname\"]\n    return rec\ncustomersDF=Map.apply(customersDF,f=addcolumns)\ncustomersDF.toDF().show()\ncustomersDF=DropFields.apply(customersDF,[\"contactfirstname\",\"contactlastname\"])\ncustomersDF.toDF().show()\n# Rename\ncustomersDF=customersDF.rename_field(\"territory\",\"region\")\ncustomersDF.toDF().show()\njob.commit()",
+	"notebook": {
+		"metadata": {
+			"kernelspec": {
+				"name": "glue_pyspark",
+				"display_name": "Glue PySpark",
+				"language": "python"
+			},
+			"language_info": {
+				"name": "Python_Glue_Session",
+				"mimetype": "text/x-python",
+				"codemirror_mode": {
+					"name": "python",
+					"version": 3
+				},
+				"pygments_lexer": "python3",
+				"file_extension": ".py"
+			}
+		},
+		"nbformat_minor": 4,
+		"nbformat": 4,
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": "import sys\nfrom awsglue.transforms import *\nfrom awsglue.utils import getResolvedOptions\nfrom pyspark.context import SparkContext # start the spark application. RDD, DataFrame\nfrom awsglue.context import GlueContext # access the aws services\nfrom awsglue.job import Job\n  \nsc = SparkContext.getOrCreate()\nglueContext = GlueContext(sc)\nspark = glueContext.spark_session\njob = Job(glueContext)",
+				"metadata": {
+					"trusted": true,
+					"editable": true
+				},
+				"execution_count": 1,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "Welcome to the Glue Interactive Sessions Kernel\nFor more information on available magic commands, please type %help in any new cell.\n\nPlease view our Getting Started page to access the most up-to-date information on the Interactive Sessions kernel: https://docs.aws.amazon.com/glue/latest/dg/interactive-sessions.html\nInstalled kernel version: 1.0.7 \nTrying to create a Glue session for the kernel.\nSession Type: glueetl\nSession ID: 81ced00e-e1b0-4cc5-a9de-65313616290a\nApplying the following default arguments:\n--glue_kernel_version 1.0.7\n--enable-glue-datacatalog true\nWaiting for session 81ced00e-e1b0-4cc5-a9de-65313616290a to get into ready status...\nSession 81ced00e-e1b0-4cc5-a9de-65313616290a has been created.\n\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "spark",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 2,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "<pyspark.sql.session.SparkSession object at 0x7f2e2ed1baf0>\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "#ETL process\nextract the data from data catelog ( Sales, Customers )\n\ntransformation  - Join - CustomersalesDF\n\nload the data into s3 bucket - JSON",
+				"metadata": {},
+				"execution_count": null,
+				"outputs": []
+			},
+			{
+				"cell_type": "code",
+				"source": "salesDF=glueContext.create_dynamic_frame.from_catalog(\n    database=\"salesdb\",\n    table_name=\"sales\")\n\ncustomersDF=glueContext.create_dynamic_frame.from_catalog(\n    database=\"salesdb\",\n    table_name=\"customers\")",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 3,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "salesDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 6,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+-----------+---------------+---------+---------------+-------+----------------+-------+------+--------+-------+-----------+----+-----------+--------+----------+\n|ordernumber|quantityordered|priceeach|orderlinenumber|  sales|       orderdate| status|qtr_id|month_id|year_id|productline|msrp|productcode|dealsize|customerid|\n+-----------+---------------+---------+---------------+-------+----------------+-------+------+--------+-------+-----------+----+-----------+--------+----------+\n|      10107|             30|     95.7|              2| 2871.0|  2/24/2003 0:00|Shipped|     1|       2|   2003|Motorcycles|  95|   S10_1678|   Small|         1|\n|      10121|             34|    81.35|              5| 2765.9|05-07-2003 00:00|Shipped|     2|       5|   2003|Motorcycles|  95|   S10_1678|   Small|         2|\n|      10134|             41|    94.74|              2|3884.34|07-01-2003 00:00|Shipped|     3|       7|   2003|Motorcycles|  95|   S10_1678|  Medium|         3|\n|      10145|             45|    83.26|              6| 3746.7|  8/25/2003 0:00|Shipped|     3|       8|   2003|Motorcycles|  95|   S10_1678|  Medium|         4|\n|      10159|             49|    100.0|             14|5205.27|10-10-2003 00:00|Shipped|     4|      10|   2003|Motorcycles|  95|   S10_1678|  Medium|         5|\n|      10168|             36|    96.66|              1|3479.76| 10/28/2003 0:00|Shipped|     4|      10|   2003|Motorcycles|  95|   S10_1678|  Medium|         6|\n|      10180|             29|    86.13|              9|2497.77|11-11-2003 00:00|Shipped|     4|      11|   2003|Motorcycles|  95|   S10_1678|   Small|         7|\n|      10188|             48|    100.0|              1|5512.32| 11/18/2003 0:00|Shipped|     4|      11|   2003|Motorcycles|  95|   S10_1678|  Medium|         8|\n|      10201|             22|    98.57|              2|2168.54|12-01-2003 00:00|Shipped|     4|      12|   2003|Motorcycles|  95|   S10_1678|   Small|         9|\n|      10211|             41|    100.0|             14|4708.44|  1/15/2004 0:00|Shipped|     1|       1|   2004|Motorcycles|  95|   S10_1678|  Medium|        10|\n|      10223|             37|    100.0|              1|3965.66|  2/20/2004 0:00|Shipped|     1|       2|   2004|Motorcycles|  95|   S10_1678|  Medium|        11|\n|      10237|             23|    100.0|              7|2333.12|04-05-2004 00:00|Shipped|     2|       4|   2004|Motorcycles|  95|   S10_1678|   Small|        12|\n|      10251|             28|    100.0|              2|3188.64|  5/18/2004 0:00|Shipped|     2|       5|   2004|Motorcycles|  95|   S10_1678|  Medium|        13|\n|      10263|             34|    100.0|              2|3676.76|  6/28/2004 0:00|Shipped|     2|       6|   2004|Motorcycles|  95|   S10_1678|  Medium|        14|\n|      10275|             45|    92.83|              1|4177.35|  7/23/2004 0:00|Shipped|     3|       7|   2004|Motorcycles|  95|   S10_1678|  Medium|        15|\n|      10285|             36|    100.0|              6|4099.68|  8/27/2004 0:00|Shipped|     3|       8|   2004|Motorcycles|  95|   S10_1678|  Medium|        16|\n|      10299|             23|    100.0|              9|2597.39|  9/30/2004 0:00|Shipped|     3|       9|   2004|Motorcycles|  95|   S10_1678|   Small|        17|\n|      10309|             41|    100.0|              5|4394.38| 10/15/2004 0:00|Shipped|     4|      10|   2004|Motorcycles|  95|   S10_1678|  Medium|        18|\n|      10318|             46|    94.74|              1|4358.04|11-02-2004 00:00|Shipped|     4|      11|   2004|Motorcycles|  95|   S10_1678|  Medium|        19|\n|      10329|             42|    100.0|              1|4396.14| 11/15/2004 0:00|Shipped|     4|      11|   2004|Motorcycles|  95|   S10_1678|  Medium|        20|\n+-----------+---------------+---------+---------------+-------+----------------+-------+------+--------+-------+-----------+----+-----------+--------+----------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "salesDF.printSchema()\ncustomersDF.printSchema()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 7,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "root\n|-- ordernumber: long\n|-- quantityordered: long\n|-- priceeach: double\n|-- orderlinenumber: long\n|-- sales: double\n|-- orderdate: string\n|-- status: string\n|-- qtr_id: long\n|-- month_id: long\n|-- year_id: long\n|-- productline: string\n|-- msrp: long\n|-- productcode: string\n|-- dealsize: string\n|-- customerid: long\n\nroot\n|-- customerid: long\n|-- customername: string\n|-- email: string\n|-- city: string\n|-- country: string\n|-- territory: string\n|-- contactfirstname: string\n|-- contactlastname: string\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "# Transformation\n\ncustomersalesDF =Join.apply(salesDF,customersDF,\"customerid\",\"customerid\")\ncustomersalesDF.printSchema()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 8,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "root\n|-- orderlinenumber: long\n|-- sales: double\n|-- territory: string\n|-- city: string\n|-- customername: string\n|-- year_id: long\n|-- productline: string\n|-- contactlastname: string\n|-- country: string\n|-- .customerid: long\n|-- qtr_id: long\n|-- msrp: long\n|-- quantityordered: long\n|-- productcode: string\n|-- status: string\n|-- email: string\n|-- contactfirstname: string\n|-- ordernumber: long\n|-- orderdate: string\n|-- customerid: long\n|-- dealsize: string\n|-- month_id: long\n|-- priceeach: double\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "customersalesDF=customersalesDF.drop_fields(['`.customerid`'])\ncustomersalesDF.printSchema()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 9,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "root\n|-- orderlinenumber: long\n|-- sales: double\n|-- territory: string\n|-- city: string\n|-- customername: string\n|-- year_id: long\n|-- productline: string\n|-- contactlastname: string\n|-- country: string\n|-- qtr_id: long\n|-- msrp: long\n|-- quantityordered: long\n|-- productcode: string\n|-- status: string\n|-- email: string\n|-- contactfirstname: string\n|-- ordernumber: long\n|-- orderdate: string\n|-- customerid: long\n|-- dealsize: string\n|-- month_id: long\n|-- priceeach: double\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "customersalesDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 10,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+---------------+-------+---------+--------------+--------------------+-------+------------+---------------+---------+------+----+---------------+-----------+-------+--------------------+----------------+-----------+----------------+----------+--------+--------+---------+\n|orderlinenumber|  sales|territory|          city|        customername|year_id| productline|contactlastname|  country|qtr_id|msrp|quantityordered|productcode| status|               email|contactfirstname|ordernumber|       orderdate|customerid|dealsize|month_id|priceeach|\n+---------------+-------+---------+--------------+--------------------+-------+------------+---------------+---------+------+----+---------------+-----------+-------+--------------------+----------------+-----------+----------------+----------+--------+--------+---------+\n|             13| 1451.0|     APAC|     Chatswood|Souveniers And Th...|   2004| Motorcycles|         Inouye|Australia|     4|  95|             20|   S10_1678|Shipped|     vinouye@aol.com|        Veronika|      10361| 12/17/2004 0:00|        22|   Small|      12|    72.55|\n|              4|8014.82|     APAC|South Brisbane|Australian Gift N...|   2003|Classic Cars|       Stenseth|Australia|     4| 214|             34|   S10_1949|Shipped| lnestle@hotmail.com|           Ernie|      10174|11-06-2003 00:00|        33|   Large|      11|    100.0|\n|              3|7667.14|       NA|     Allentown|Diecast Classics ...|   2004| Motorcycles|        Centini|      USA|     4| 193|             37|   S10_4698|Shipped|   lisha@centini.org|           Lisha|      10318|11-02-2004 00:00|        99|   Large|      11|    100.0|\n|              6|10172.7|     EMEA|    Versailles|  Auto Assoc. & Cie.|   2004|Classic Cars|          Perin|   France|     4| 214|             47|   S10_1949|Shipped|    lperin@perin.org|          Lavera|      10304|10-11-2004 00:00|        44|   Large|      10|    100.0|\n|              5|5288.01|     APAC|South Brisbane|Australian Gift N...|   2005| Motorcycles|        Reitler|Australia|     1| 118|             39|   S10_2016|Shipped|   sabra@uyetake.org|          Laurel|      10374|02-02-2005 00:00|        77|  Medium|       2|    100.0|\n|              5|3896.49|       NA|           NYC|   Land of Toys Inc.|   2003| Motorcycles|      Klonowski|      USA|     1| 118|             39|   S10_2016|Shipped| lnestle@hotmail.com|            Karl|      10107|  2/24/2003 0:00|        55|  Medium|       2|    99.91|\n|              1|3965.66|     APAC|     Melbourne|Australian Collec...|   2004| Motorcycles|         Amigon|Australia|     1|  95|             37|   S10_1678|Shipped|  gladys.rim@rim.org|           Minna|      10223|  2/20/2004 0:00|        11|  Medium|       2|    100.0|\n|              3| 8714.7|     EMEA|        Bergen|        Herkku Gifts|   2003| Motorcycles|           Gato|   Norway|     4| 193|             45|   S10_4698|Shipped| lnestle@hotmail.com|             Lai|      10188| 11/18/2003 0:00|        88|   Large|      11|    100.0|\n|              1|2852.08|       NA|  Philadelphia|Motor Mint Distri...|   2004| Motorcycles|         Buvens|      USA|     2| 118|             22|   S10_2016|Shipped|   sabra@uyetake.org|           Tawna|      10236|04-03-2004 00:00|        66|   Small|       4|    100.0|\n|              4|8065.89|       NA| San Francisco|     Mini Wheels Co.|   2003| Motorcycles|          Emigh|      USA|     4| 193|             49|   S10_4698|Shipped|   sabra@uyetake.org|         Stephen|      10201|12-01-2003 00:00|        89|   Large|      12|    100.0|\n|             12| 733.11|     EMEA|        Nantes|   La Rochelle Gifts|   2005| Motorcycles|        Kolmetz|   France|     1|  95|             21|   S10_1678|Shipped|emerson.bowley@bo...|         Willard|      10375|02-03-2005 00:00|        23|   Small|       2|    34.91|\n|              2| 2871.0|       NA|           NYC|   Land of Toys Inc.|   2003| Motorcycles|           Butt|      USA|     1|  95|             30|   S10_1678|Shipped|  gladys.rim@rim.org|           James|      10107|  2/24/2003 0:00|         1|   Small|       2|     95.7|\n|              7|2333.12|       NA|           NYC|     Vitachrome Inc.|   2004| Motorcycles|        Maclead|      USA|     2|  95|             23|   S10_1678|Shipped|yuki_whobrey@aol.com|            Abel|      10237|04-05-2004 00:00|        12|   Small|       4|    100.0|\n|              3|11623.7|       NA|    San Rafael|Mini Gifts Distri...|   2004|Classic Cars|        Ferencz|      USA|     4| 214|             48|   S10_1949|Shipped|erick.ferencz@aol...|           Erick|      10312| 10/21/2004 0:00|        45|   Large|      10|    100.0|\n|              5|5756.52|       NA|        Newark|Tekni Collectable...|   2004| Motorcycles|         Weight|      USA|     2| 118|             44|   S10_2016|Shipped|mmastella@mastell...|          Penney|      10251|  5/18/2004 0:00|        67|  Medium|       5|    100.0|\n|              3|2793.86|     APAC|     Melbourne|Australian Collec...|   2003| Motorcycles|         Wenner|Australia|     2| 118|             29|   S10_2016|Shipped|   sabra@uyetake.org|         Tonette|      10120|  4/29/2003 0:00|        56|   Small|       4|    96.34|\n|              8|5372.57|       NA|  Philadelphia|Classic Gift Idea...|   2003|Classic Cars|          Glick|      USA|     4| 214|             23|   S10_1949|Shipped|   sabra@uyetake.org|          Albina|      10183| 11/13/2003 0:00|        34|  Medium|      11|    100.0|\n|              3| 5868.2|       NA|           NYC|   Land of Toys Inc.|   2004| Motorcycles|        Klusman|      USA|     4| 193|             26|   S10_4698|Shipped|arlene_klusman@gm...|          Arlene|      10329| 11/15/2004 0:00|       100|  Medium|      11|    100.0|\n|              5| 2225.5|       NA|   New Bedford|    FunGiftIdeas.com|   2005| Motorcycles|          Crupi|      USA|     1| 118|             50|   S10_2016|Shipped|mmastella@mastell...|          Delisa|      10388|03-03-2005 00:00|        78|   Small|       3|    44.51|\n|              1| 6000.4|       NA|        Nashua|Online Diecast Cr...|   2004|Classic Cars|        Saylors|      USA|     4| 214|             40|   S10_1949|Shipped|emerson.bowley@bo...|          Fatima|      10322|11-04-2004 00:00|        46|  Medium|      11|    100.0|\n+---------------+-------+---------+--------------+--------------------+-------+------------+---------------+---------+------+----+---------------+-----------+-------+--------------------+----------------+-----------+----------------+----------+--------+--------+---------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "# Load the data into s3 bucket - JSON, CSV, Parquat, AVro etc\ncustomersalesDF=glueContext.write_dynamic_frame.from_options(\n    connection_type=\"s3\",\n    connection_options={\"path\":\"s3://etljob2025/data/customersales\"},\n    format=\"json\",\n    frame=customersalesDF\n)\n\n\n# customerssalesDFspark=customerssalesDF.toDF()  - convert dynamic frame into spark dataframe\n# spark.write.option('csv')",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 11,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "customersalesDF=glueContext.create_dynamic_frame.from_options(\n    connection_type=\"s3\",\n    connection_options={\"paths\":[\"s3://etljob2025/data/customersales\"]},\n    format=\"json\"\n)\n\n# read data from s3 bucket",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 17,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "customersalesDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 18,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+---------------+-------+---------+--------------+--------------------+-------+------------+---------------+---------+------+----+---------------+-----------+-------+--------------------+-----------+----------------+----------------+----------+--------+---------+--------+\n|orderlinenumber|  sales|territory|          city|        customername|year_id| productline|contactlastname|  country|qtr_id|msrp|quantityordered|productcode| status|               email|ordernumber|contactfirstname|       orderdate|customerid|dealsize|priceeach|month_id|\n+---------------+-------+---------+--------------+--------------------+-------+------------+---------------+---------+------+----+---------------+-----------+-------+--------------------+-----------+----------------+----------------+----------+--------+---------+--------+\n|             13| 1451.0|     APAC|     Chatswood|Souveniers And Th...|   2004| Motorcycles|         Inouye|Australia|     4|  95|             20|   S10_1678|Shipped|     vinouye@aol.com|      10361|        Veronika| 12/17/2004 0:00|        22|   Small|    72.55|      12|\n|              4|8014.82|     APAC|South Brisbane|Australian Gift N...|   2003|Classic Cars|       Stenseth|Australia|     4| 214|             34|   S10_1949|Shipped| lnestle@hotmail.com|      10174|           Ernie|11-06-2003 00:00|        33|   Large|    100.0|      11|\n|              3|7667.14|       NA|     Allentown|Diecast Classics ...|   2004| Motorcycles|        Centini|      USA|     4| 193|             37|   S10_4698|Shipped|   lisha@centini.org|      10318|           Lisha|11-02-2004 00:00|        99|   Large|    100.0|      11|\n|              6|10172.7|     EMEA|    Versailles|  Auto Assoc. & Cie.|   2004|Classic Cars|          Perin|   France|     4| 214|             47|   S10_1949|Shipped|    lperin@perin.org|      10304|          Lavera|10-11-2004 00:00|        44|   Large|    100.0|      10|\n|              5|5288.01|     APAC|South Brisbane|Australian Gift N...|   2005| Motorcycles|        Reitler|Australia|     1| 118|             39|   S10_2016|Shipped|   sabra@uyetake.org|      10374|          Laurel|02-02-2005 00:00|        77|  Medium|    100.0|       2|\n|              5|3896.49|       NA|           NYC|   Land of Toys Inc.|   2003| Motorcycles|      Klonowski|      USA|     1| 118|             39|   S10_2016|Shipped| lnestle@hotmail.com|      10107|            Karl|  2/24/2003 0:00|        55|  Medium|    99.91|       2|\n|              1|3965.66|     APAC|     Melbourne|Australian Collec...|   2004| Motorcycles|         Amigon|Australia|     1|  95|             37|   S10_1678|Shipped|  gladys.rim@rim.org|      10223|           Minna|  2/20/2004 0:00|        11|  Medium|    100.0|       2|\n|              3| 8714.7|     EMEA|        Bergen|        Herkku Gifts|   2003| Motorcycles|           Gato|   Norway|     4| 193|             45|   S10_4698|Shipped| lnestle@hotmail.com|      10188|             Lai| 11/18/2003 0:00|        88|   Large|    100.0|      11|\n|              1|2852.08|       NA|  Philadelphia|Motor Mint Distri...|   2004| Motorcycles|         Buvens|      USA|     2| 118|             22|   S10_2016|Shipped|   sabra@uyetake.org|      10236|           Tawna|04-03-2004 00:00|        66|   Small|    100.0|       4|\n|              4|8065.89|       NA| San Francisco|     Mini Wheels Co.|   2003| Motorcycles|          Emigh|      USA|     4| 193|             49|   S10_4698|Shipped|   sabra@uyetake.org|      10201|         Stephen|12-01-2003 00:00|        89|   Large|    100.0|      12|\n|             12| 733.11|     EMEA|        Nantes|   La Rochelle Gifts|   2005| Motorcycles|        Kolmetz|   France|     1|  95|             21|   S10_1678|Shipped|emerson.bowley@bo...|      10375|         Willard|02-03-2005 00:00|        23|   Small|    34.91|       2|\n|              2| 2871.0|       NA|           NYC|   Land of Toys Inc.|   2003| Motorcycles|           Butt|      USA|     1|  95|             30|   S10_1678|Shipped|  gladys.rim@rim.org|      10107|           James|  2/24/2003 0:00|         1|   Small|     95.7|       2|\n|              7|2333.12|       NA|           NYC|     Vitachrome Inc.|   2004| Motorcycles|        Maclead|      USA|     2|  95|             23|   S10_1678|Shipped|yuki_whobrey@aol.com|      10237|            Abel|04-05-2004 00:00|        12|   Small|    100.0|       4|\n|              3|11623.7|       NA|    San Rafael|Mini Gifts Distri...|   2004|Classic Cars|        Ferencz|      USA|     4| 214|             48|   S10_1949|Shipped|erick.ferencz@aol...|      10312|           Erick| 10/21/2004 0:00|        45|   Large|    100.0|      10|\n|              5|5756.52|       NA|        Newark|Tekni Collectable...|   2004| Motorcycles|         Weight|      USA|     2| 118|             44|   S10_2016|Shipped|mmastella@mastell...|      10251|          Penney|  5/18/2004 0:00|        67|  Medium|    100.0|       5|\n|              3|2793.86|     APAC|     Melbourne|Australian Collec...|   2003| Motorcycles|         Wenner|Australia|     2| 118|             29|   S10_2016|Shipped|   sabra@uyetake.org|      10120|         Tonette|  4/29/2003 0:00|        56|   Small|    96.34|       4|\n|              8|5372.57|       NA|  Philadelphia|Classic Gift Idea...|   2003|Classic Cars|          Glick|      USA|     4| 214|             23|   S10_1949|Shipped|   sabra@uyetake.org|      10183|          Albina| 11/13/2003 0:00|        34|  Medium|    100.0|      11|\n|              3| 5868.2|       NA|           NYC|   Land of Toys Inc.|   2004| Motorcycles|        Klusman|      USA|     4| 193|             26|   S10_4698|Shipped|arlene_klusman@gm...|      10329|          Arlene| 11/15/2004 0:00|       100|  Medium|    100.0|      11|\n|              5| 2225.5|       NA|   New Bedford|    FunGiftIdeas.com|   2005| Motorcycles|          Crupi|      USA|     1| 118|             50|   S10_2016|Shipped|mmastella@mastell...|      10388|          Delisa|03-03-2005 00:00|        78|   Small|    44.51|       3|\n|              1| 6000.4|       NA|        Nashua|Online Diecast Cr...|   2004|Classic Cars|        Saylors|      USA|     4| 214|             40|   S10_1949|Shipped|emerson.bowley@bo...|      10322|          Fatima|11-04-2004 00:00|        46|  Medium|    100.0|      11|\n+---------------+-------+---------+--------------+--------------------+-------+------------+---------------+---------+------+----+---------------+-----------+-------+--------------------+-----------+----------------+----------------+----------+--------+---------+--------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "salesDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 20,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+-----------+---------------+---------+---------------+-------+----------------+-------+------+--------+-------+-----------+----+-----------+--------+----------+\n|ordernumber|quantityordered|priceeach|orderlinenumber|  sales|       orderdate| status|qtr_id|month_id|year_id|productline|msrp|productcode|dealsize|customerid|\n+-----------+---------------+---------+---------------+-------+----------------+-------+------+--------+-------+-----------+----+-----------+--------+----------+\n|      10107|             30|     95.7|              2| 2871.0|  2/24/2003 0:00|Shipped|     1|       2|   2003|Motorcycles|  95|   S10_1678|   Small|         1|\n|      10121|             34|    81.35|              5| 2765.9|05-07-2003 00:00|Shipped|     2|       5|   2003|Motorcycles|  95|   S10_1678|   Small|         2|\n|      10134|             41|    94.74|              2|3884.34|07-01-2003 00:00|Shipped|     3|       7|   2003|Motorcycles|  95|   S10_1678|  Medium|         3|\n|      10145|             45|    83.26|              6| 3746.7|  8/25/2003 0:00|Shipped|     3|       8|   2003|Motorcycles|  95|   S10_1678|  Medium|         4|\n|      10159|             49|    100.0|             14|5205.27|10-10-2003 00:00|Shipped|     4|      10|   2003|Motorcycles|  95|   S10_1678|  Medium|         5|\n|      10168|             36|    96.66|              1|3479.76| 10/28/2003 0:00|Shipped|     4|      10|   2003|Motorcycles|  95|   S10_1678|  Medium|         6|\n|      10180|             29|    86.13|              9|2497.77|11-11-2003 00:00|Shipped|     4|      11|   2003|Motorcycles|  95|   S10_1678|   Small|         7|\n|      10188|             48|    100.0|              1|5512.32| 11/18/2003 0:00|Shipped|     4|      11|   2003|Motorcycles|  95|   S10_1678|  Medium|         8|\n|      10201|             22|    98.57|              2|2168.54|12-01-2003 00:00|Shipped|     4|      12|   2003|Motorcycles|  95|   S10_1678|   Small|         9|\n|      10211|             41|    100.0|             14|4708.44|  1/15/2004 0:00|Shipped|     1|       1|   2004|Motorcycles|  95|   S10_1678|  Medium|        10|\n|      10223|             37|    100.0|              1|3965.66|  2/20/2004 0:00|Shipped|     1|       2|   2004|Motorcycles|  95|   S10_1678|  Medium|        11|\n|      10237|             23|    100.0|              7|2333.12|04-05-2004 00:00|Shipped|     2|       4|   2004|Motorcycles|  95|   S10_1678|   Small|        12|\n|      10251|             28|    100.0|              2|3188.64|  5/18/2004 0:00|Shipped|     2|       5|   2004|Motorcycles|  95|   S10_1678|  Medium|        13|\n|      10263|             34|    100.0|              2|3676.76|  6/28/2004 0:00|Shipped|     2|       6|   2004|Motorcycles|  95|   S10_1678|  Medium|        14|\n|      10275|             45|    92.83|              1|4177.35|  7/23/2004 0:00|Shipped|     3|       7|   2004|Motorcycles|  95|   S10_1678|  Medium|        15|\n|      10285|             36|    100.0|              6|4099.68|  8/27/2004 0:00|Shipped|     3|       8|   2004|Motorcycles|  95|   S10_1678|  Medium|        16|\n|      10299|             23|    100.0|              9|2597.39|  9/30/2004 0:00|Shipped|     3|       9|   2004|Motorcycles|  95|   S10_1678|   Small|        17|\n|      10309|             41|    100.0|              5|4394.38| 10/15/2004 0:00|Shipped|     4|      10|   2004|Motorcycles|  95|   S10_1678|  Medium|        18|\n|      10318|             46|    94.74|              1|4358.04|11-02-2004 00:00|Shipped|     4|      11|   2004|Motorcycles|  95|   S10_1678|  Medium|        19|\n|      10329|             42|    100.0|              1|4396.14| 11/15/2004 0:00|Shipped|     4|      11|   2004|Motorcycles|  95|   S10_1678|  Medium|        20|\n+-----------+---------------+---------+---------------+-------+----------------+-------+------+--------+-------+-----------+----+-----------+--------+----------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "# selectfields method with the dynamic frame to query rows with selected columns\n\nordersDF=SelectFields.apply(salesDF,[\"ordernumber\",\"sales\"])\nordersDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 21,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+-----------+-------+\n|ordernumber|  sales|\n+-----------+-------+\n|      10107| 2871.0|\n|      10121| 2765.9|\n|      10134|3884.34|\n|      10145| 3746.7|\n|      10159|5205.27|\n|      10168|3479.76|\n|      10180|2497.77|\n|      10188|5512.32|\n|      10201|2168.54|\n|      10211|4708.44|\n|      10223|3965.66|\n|      10237|2333.12|\n|      10251|3188.64|\n|      10263|3676.76|\n|      10275|4177.35|\n|      10285|4099.68|\n|      10299|2597.39|\n|      10309|4394.38|\n|      10318|4358.04|\n|      10329|4396.14|\n+-----------+-------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "highsalesDF=Filter.apply(salesDF,f=lambda x:x[\"sales\"] > 12000)\nhighsalesDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 22,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+---------------+-------+-------+------------+------+----+---------------+-----------+----------+-----------+----------------+----------+--------+---------+--------+\n|orderlinenumber|  sales|year_id| productline|qtr_id|msrp|quantityordered|productcode|    status|ordernumber|       orderdate|customerid|dealsize|priceeach|month_id|\n+---------------+-------+-------+------------+------+----+---------------+-----------+----------+-----------+----------------+----------+--------+---------+--------+\n|              6|12001.0|   2005|Classic Cars|     2| 214|             50|   S10_1949|In Process|      10424|  5/31/2005 0:00|        54|   Large|    100.0|       5|\n|              2|14082.8|   2005|Vintage Cars|     2| 170|             76|   S18_1749|   On Hold|      10407|  4/22/2005 0:00|       599|   Large|    100.0|       4|\n|              6|12536.5|   2004|Vintage Cars|     4| 127|             50|   S18_2325|   Shipped|      10322|11-04-2004 00:00|       745|   Large|    100.0|      11|\n+---------------+-------+-------+------------+------+----+---------------+-----------+----------+-----------+----------------+----------+--------+---------+--------+\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "salesDF=salesDF.toDF()\nsalesDF.groupby('productline').count().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 25,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+----------------+-----+\n|     productline|count|\n+----------------+-----+\n|    Classic Cars|  967|\n|           Ships|  234|\n|Trucks and Buses|  301|\n|          Trains|   77|\n|    Vintage Cars|  607|\n|          Planes|  306|\n|     Motorcycles|  331|\n+----------------+-----+\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "salesDF.select(\"productline\",\"quantityordered\").groupby('productline').min().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 26,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+----------------+--------------------+\n|     productline|min(quantityordered)|\n+----------------+--------------------+\n|    Classic Cars|                  10|\n|           Ships|                  20|\n|Trucks and Buses|                  11|\n|          Trains|                  20|\n|    Vintage Cars|                   6|\n|          Planes|                  11|\n|     Motorcycles|                  20|\n+----------------+--------------------+\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "salesDF.groupby('productline').agg({'quantityordered':'mean','sales':'sum','priceeach':'max'}).show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 27,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+----------------+--------------+--------------------+------------------+\n|     productline|max(priceeach)|avg(quantityordered)|        sum(sales)|\n+----------------+--------------+--------------------+------------------+\n|    Classic Cars|         100.0|  35.152016546018615| 3919615.659999997|\n|           Ships|         100.0|   34.73076923076923|         714437.13|\n|Trucks and Buses|         100.0|   35.80398671096346|1127789.8399999996|\n|          Trains|         100.0|   35.22077922077922|226243.46999999997|\n|    Vintage Cars|         100.0|   34.71004942339374|1903150.8399999992|\n|          Planes|         100.0|   35.05555555555556| 975003.5700000001|\n|     Motorcycles|         100.0|  35.235649546827794|1166388.3400000003|\n+----------------+--------------+--------------------+------------------+\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "salesDF.orderBy(salesDF.sales).show()\nsalesDF.orderBy(salesDF.sales.desc()).show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 29,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+-----------+---------------+---------+---------------+------+----------------+----------+------+--------+-------+----------------+----+-----------+--------+----------+\n|ordernumber|quantityordered|priceeach|orderlinenumber| sales|       orderdate|    status|qtr_id|month_id|year_id|     productline|msrp|productcode|dealsize|customerid|\n+-----------+---------------+---------+---------------+------+----------------+----------+------+--------+-------+----------------+----+-----------+--------+----------+\n|      10425|             11|    43.83|              6|482.13|  5/31/2005 0:00|In Process|     2|       5|   2005|Trucks and Buses|  54|   S32_2509|   Small|      2250|\n|      10407|              6|    90.19|              3|541.14|  4/22/2005 0:00|   On Hold|     2|       4|   2005|    Vintage Cars|  92|   S18_4409|   Small|      1288|\n|      10408|             15|    36.93|              1|553.95|  4/22/2005 0:00|   Shipped|     2|       4|   2005|    Vintage Cars|  41|   S24_3969|   Small|      2045|\n|      10280|             20|    28.88|             12| 577.6|  8/17/2004 0:00|   Shipped|     3|       8|   2004|    Vintage Cars|  33|   S24_1937|   Small|      1552|\n|      10419|             15|    42.67|              7|640.05|  5/17/2005 0:00|   Shipped|     2|       5|   2005|    Classic Cars|  37|   S24_2972|   Small|      1819|\n|      10264|             20|    32.59|              4| 651.8|  6/30/2004 0:00|   Shipped|     2|       6|   2004|     Motorcycles|  40|   S32_2206|   Small|      2210|\n|      10420|             15|    43.49|              3|652.35|  5/29/2005 0:00|In Process|     2|       5|   2005|    Vintage Cars|  41|   S24_3969|   Small|      2046|\n|      10214|             20|    34.19|              3| 683.8|  1/26/2004 0:00|   Shipped|     1|       1|   2004|    Vintage Cars|  33|   S24_1937|   Small|      1549|\n|      10304|             23|     30.2|             16| 694.6|10-11-2004 00:00|   Shipped|     4|      10|   2004|    Vintage Cars|  33|   S24_1937|   Small|      1554|\n|      10344|             20|    35.18|              6| 703.6| 11/25/2004 0:00|   Shipped|     4|      11|   2004|    Vintage Cars|  33|   S24_1937|   Small|      1558|\n|      10110|             20|    35.51|              3| 710.2|  3/18/2003 0:00|   Shipped|     1|       3|   2003|    Vintage Cars|  33|   S24_1937|   Small|      1541|\n|      10135|             20|    35.87|              1| 717.4|07-02-2003 00:00|   Shipped|     3|       7|   2003|    Classic Cars|  37|   S24_2972|   Small|      1795|\n|      10114|             24|    30.06|              1|721.44|04-01-2003 00:00|   Shipped|     2|       4|   2003|    Classic Cars|  35|   S24_2840|   Small|      1718|\n|      10358|             20|    36.42|             11| 728.4|12-10-2004 00:00|   Shipped|     4|      12|   2004|Trucks and Buses| 122|   S18_2319|   Small|       724|\n|      10375|             21|    34.91|             12|733.11|02-03-2005 00:00|   Shipped|     1|       2|   2005|     Motorcycles|  95|   S10_1678|   Small|        23|\n|      10193|             26|    29.21|             10|759.46| 11/21/2003 0:00|   Shipped|     4|      11|   2003|    Vintage Cars|  33|   S24_1937|   Small|      1547|\n|      10203|             21|     37.0|              2| 777.0|12-02-2003 00:00|   Shipped|     4|      12|   2003|    Classic Cars|  37|   S24_2972|   Small|      1801|\n|      10409|              6|    100.0|              2|785.64|  4/23/2005 0:00|   Shipped|     2|       4|   2005|    Vintage Cars| 127|   S18_2325|   Small|       752|\n|      10281|             20|    40.66|              2| 813.2|  8/19/2004 0:00|   Shipped|     3|       8|   2004|    Classic Cars|  35|   S24_2840|   Small|      1732|\n|      10156|             20|    41.02|              1| 820.4|10-08-2003 00:00|   Shipped|     4|      10|   2003|    Vintage Cars|  43|   S50_1341|   Small|      2357|\n+-----------+---------------+---------+---------------+------+----------------+----------+------+--------+-------+----------------+----+-----------+--------+----------+\nonly showing top 20 rows\n\n+-----------+---------------+---------+---------------+-------+----------------+----------+------+--------+-------+------------+----+-----------+--------+----------+\n|ordernumber|quantityordered|priceeach|orderlinenumber|  sales|       orderdate|    status|qtr_id|month_id|year_id| productline|msrp|productcode|dealsize|customerid|\n+-----------+---------------+---------+---------------+-------+----------------+----------+------+--------+-------+------------+----+-----------+--------+----------+\n|      10407|             76|    100.0|              2|14082.8|  4/22/2005 0:00|   On Hold|     2|       4|   2005|Vintage Cars| 170|   S18_1749|   Large|       599|\n|      10322|             50|    100.0|              6|12536.5|11-04-2004 00:00|   Shipped|     4|      11|   2004|Vintage Cars| 127|   S18_2325|   Large|       745|\n|      10424|             50|    100.0|              6|12001.0|  5/31/2005 0:00|In Process|     2|       5|   2005|Classic Cars| 214|   S10_1949|   Large|        54|\n|      10412|             60|    100.0|              9|11887.8|05-03-2005 00:00|   Shipped|     2|       5|   2005|Classic Cars| 169|   S18_3232|   Large|      1063|\n|      10403|             66|    100.0|              9|11886.6|04-08-2005 00:00|   Shipped|     2|       4|   2005| Motorcycles| 193|   S10_4698|   Large|       105|\n|      10405|             76|    100.0|              3|11739.7|  4/14/2005 0:00|   Shipped|     2|       4|   2005|Classic Cars| 140|   S24_3856|   Large|      1996|\n|      10312|             48|    100.0|              3|11623.7| 10/21/2004 0:00|   Shipped|     4|      10|   2004|Classic Cars| 214|   S10_1949|   Large|        45|\n|      10333|             46|    100.0|              2|11336.7| 11/18/2004 0:00|   Shipped|     4|      11|   2004|Vintage Cars|  99|   S18_3320|   Large|      1134|\n|      10127|             46|    100.0|              2|11279.2|06-03-2003 00:00|   Shipped|     2|       6|   2003|Classic Cars| 207|   S12_1108|   Large|       189|\n|      10150|             45|    100.0|              8|10993.5|  9/19/2003 0:00|   Shipped|     3|       9|   2003|Classic Cars| 214|   S10_1949|   Large|        31|\n|      10339|             55|    100.0|             13|10758.0| 11/23/2004 0:00|   Shipped|     4|      11|   2004|Vintage Cars|  88|   S24_3151|   Large|      1840|\n|      10247|             44|    100.0|              2|10606.2|05-05-2004 00:00|   Shipped|     2|       5|   2004|Classic Cars| 207|   S12_1108|   Large|       199|\n|      10406|             65|    100.0|              1|10468.9|  4/15/2005 0:00|  Disputed|     2|       4|   2005|Classic Cars| 141|   S18_3685|   Large|      1189|\n|      10304|             47|    100.0|              6|10172.7|10-11-2004 00:00|   Shipped|     4|      10|   2004|Classic Cars| 214|   S10_1949|   Large|        44|\n|      10388|             46|    100.0|              2|10066.6|03-03-2005 00:00|   Shipped|     1|       3|   2005|      Planes|  91|  S700_1691|   Large|      2506|\n|      10375|             43|    100.0|              2|10039.6|02-03-2005 00:00|   Shipped|     1|       2|   2005|      Planes|  72|   S24_4278|   Large|      2118|\n|      10223|             49|    100.0|              3|9774.03|  2/20/2004 0:00|   Shipped|     1|       2|   2004| Motorcycles| 193|   S10_4698|   Large|        91|\n|      10356|             48|    100.0|              5| 9720.0|12-09-2004 00:00|   Shipped|     4|      12|   2004|Vintage Cars|  33|   S24_1937|   Large|      1559|\n|      10400|             64|    100.0|              9|9661.44|04-01-2005 00:00|   Shipped|     2|       4|   2005|Classic Cars| 136|   S10_4757|   Large|       132|\n|      10276|             50|    100.0|              3| 9631.0|08-02-2004 00:00|   Shipped|     3|       8|   2004|Classic Cars| 194|   S12_1099|   Large|       176|\n+-----------+---------------+---------+---------------+-------+----------------+----------+------+--------+-------+------------+----+-----------+--------+----------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "customersDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 30,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+----------+--------------------+--------------------+-------------+---------+---------+----------------+---------------+\n|customerid|        customername|               email|         city|  country|territory|contactfirstname|contactlastname|\n+----------+--------------------+--------------------+-------------+---------+---------+----------------+---------------+\n|         1|   Land of Toys Inc.|  gladys.rim@rim.org|          NYC|      USA|       NA|           James|           Butt|\n|         2|  Reims Collectables|yuki_whobrey@aol.com|        Reims|   France|     EMEA|       Josephine|        Darakjy|\n|         3|     Lyon Souveniers|fletcher.flosi@ya...|        Paris|   France|     EMEA|             Art|         Venere|\n|         4|   Toys4GrownUps.com| bette_nicka@cox.net|     Pasadena|      USA|       NA|           Lenna|       Paprocki|\n|         5|Corporate Gift Id...|     vinouye@aol.com|San Francisco|      USA|       NA|         Donette|         Foller|\n|         6|Technics Stores Inc.|  gladys.rim@rim.org|   Burlingame|      USA|       NA|          Simona|        Morasca|\n|         7|Daedalus Designs ...|yuki_whobrey@aol.com|        Lille|   France|     EMEA|          Mitsue|        Tollner|\n|         8|        Herkku Gifts|fletcher.flosi@ya...|       Bergen|   Norway|     EMEA|           Leota|       Dilliard|\n|         9|     Mini Wheels Co.| bette_nicka@cox.net|San Francisco|      USA|       NA|            Sage|         Wieser|\n|        10|    Auto Canal Petit|     vinouye@aol.com|        Paris|   France|     EMEA|            Kris|        Marrier|\n|        11|Australian Collec...|  gladys.rim@rim.org|    Melbourne|Australia|     APAC|           Minna|         Amigon|\n|        12|     Vitachrome Inc.|yuki_whobrey@aol.com|          NYC|      USA|       NA|            Abel|        Maclead|\n|        13|Tekni Collectable...|fletcher.flosi@ya...|       Newark|      USA|       NA|           Kiley|      Caldarera|\n|        14|     Gift Depot Inc.| bette_nicka@cox.net|  Bridgewater|      USA|       NA|        Graciela|           Ruta|\n|        15|   La Rochelle Gifts|     vinouye@aol.com|       Nantes|   France|     EMEA|           Cammy|        Albares|\n|        16|Marta's Replicas Co.|  gladys.rim@rim.org|    Cambridge|      USA|       NA|          Mattie|       Poquette|\n|        17| Toys of Finland Co.|yuki_whobrey@aol.com|     Helsinki|  Finland|     EMEA|         Meaghan|         Garufi|\n|        18|  Baane Mini Imports|fletcher.flosi@ya...|      Stavern|   Norway|     EMEA|          Gladys|            Rim|\n|        19|Diecast Classics ...| bette_nicka@cox.net|    Allentown|      USA|       NA|            Yuki|        Whobrey|\n|        20|   Land of Toys Inc.|     vinouye@aol.com|          NYC|      USA|       NA|        Fletcher|          Flosi|\n+----------+--------------------+--------------------+-------------+---------+---------+----------------+---------------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "def addcolumns(rec):\n    rec[\"contactfullname\"]={}\n    rec[\"contactfullname\"]=rec[\"contactfirstname\"]+ ' ' + rec[\"contactlastname\"]\n    return rec",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 33,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "customersDF=Map.apply(customersDF,f=addcolumns)\ncustomersDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 35,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+---------+--------------------+-------------+---------------+-----------------+---------+--------------------+----------------+----------+\n|territory|        customername|         city|contactlastname|  contactfullname|  country|               email|contactfirstname|customerid|\n+---------+--------------------+-------------+---------------+-----------------+---------+--------------------+----------------+----------+\n|       NA|   Land of Toys Inc.|          NYC|           Butt|       James Butt|      USA|  gladys.rim@rim.org|           James|         1|\n|     EMEA|  Reims Collectables|        Reims|        Darakjy|Josephine Darakjy|   France|yuki_whobrey@aol.com|       Josephine|         2|\n|     EMEA|     Lyon Souveniers|        Paris|         Venere|       Art Venere|   France|fletcher.flosi@ya...|             Art|         3|\n|       NA|   Toys4GrownUps.com|     Pasadena|       Paprocki|   Lenna Paprocki|      USA| bette_nicka@cox.net|           Lenna|         4|\n|       NA|Corporate Gift Id...|San Francisco|         Foller|   Donette Foller|      USA|     vinouye@aol.com|         Donette|         5|\n|       NA|Technics Stores Inc.|   Burlingame|        Morasca|   Simona Morasca|      USA|  gladys.rim@rim.org|          Simona|         6|\n|     EMEA|Daedalus Designs ...|        Lille|        Tollner|   Mitsue Tollner|   France|yuki_whobrey@aol.com|          Mitsue|         7|\n|     EMEA|        Herkku Gifts|       Bergen|       Dilliard|   Leota Dilliard|   Norway|fletcher.flosi@ya...|           Leota|         8|\n|       NA|     Mini Wheels Co.|San Francisco|         Wieser|      Sage Wieser|      USA| bette_nicka@cox.net|            Sage|         9|\n|     EMEA|    Auto Canal Petit|        Paris|        Marrier|     Kris Marrier|   France|     vinouye@aol.com|            Kris|        10|\n|     APAC|Australian Collec...|    Melbourne|         Amigon|     Minna Amigon|Australia|  gladys.rim@rim.org|           Minna|        11|\n|       NA|     Vitachrome Inc.|          NYC|        Maclead|     Abel Maclead|      USA|yuki_whobrey@aol.com|            Abel|        12|\n|       NA|Tekni Collectable...|       Newark|      Caldarera|  Kiley Caldarera|      USA|fletcher.flosi@ya...|           Kiley|        13|\n|       NA|     Gift Depot Inc.|  Bridgewater|           Ruta|    Graciela Ruta|      USA| bette_nicka@cox.net|        Graciela|        14|\n|     EMEA|   La Rochelle Gifts|       Nantes|        Albares|    Cammy Albares|   France|     vinouye@aol.com|           Cammy|        15|\n|       NA|Marta's Replicas Co.|    Cambridge|       Poquette|  Mattie Poquette|      USA|  gladys.rim@rim.org|          Mattie|        16|\n|     EMEA| Toys of Finland Co.|     Helsinki|         Garufi|   Meaghan Garufi|  Finland|yuki_whobrey@aol.com|         Meaghan|        17|\n|     EMEA|  Baane Mini Imports|      Stavern|            Rim|       Gladys Rim|   Norway|fletcher.flosi@ya...|          Gladys|        18|\n|       NA|Diecast Classics ...|    Allentown|        Whobrey|     Yuki Whobrey|      USA| bette_nicka@cox.net|            Yuki|        19|\n|       NA|   Land of Toys Inc.|          NYC|          Flosi|   Fletcher Flosi|      USA|     vinouye@aol.com|        Fletcher|        20|\n+---------+--------------------+-------------+---------------+-----------------+---------+--------------------+----------------+----------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "customersDF=DropFields.apply(customersDF,[\"contactfirstname\",\"contactlastname\"])\ncustomersDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 36,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+---------+--------------------+-------------+-----------------+---------+--------------------+----------+\n|territory|        customername|         city|  contactfullname|  country|               email|customerid|\n+---------+--------------------+-------------+-----------------+---------+--------------------+----------+\n|       NA|   Land of Toys Inc.|          NYC|       James Butt|      USA|  gladys.rim@rim.org|         1|\n|     EMEA|  Reims Collectables|        Reims|Josephine Darakjy|   France|yuki_whobrey@aol.com|         2|\n|     EMEA|     Lyon Souveniers|        Paris|       Art Venere|   France|fletcher.flosi@ya...|         3|\n|       NA|   Toys4GrownUps.com|     Pasadena|   Lenna Paprocki|      USA| bette_nicka@cox.net|         4|\n|       NA|Corporate Gift Id...|San Francisco|   Donette Foller|      USA|     vinouye@aol.com|         5|\n|       NA|Technics Stores Inc.|   Burlingame|   Simona Morasca|      USA|  gladys.rim@rim.org|         6|\n|     EMEA|Daedalus Designs ...|        Lille|   Mitsue Tollner|   France|yuki_whobrey@aol.com|         7|\n|     EMEA|        Herkku Gifts|       Bergen|   Leota Dilliard|   Norway|fletcher.flosi@ya...|         8|\n|       NA|     Mini Wheels Co.|San Francisco|      Sage Wieser|      USA| bette_nicka@cox.net|         9|\n|     EMEA|    Auto Canal Petit|        Paris|     Kris Marrier|   France|     vinouye@aol.com|        10|\n|     APAC|Australian Collec...|    Melbourne|     Minna Amigon|Australia|  gladys.rim@rim.org|        11|\n|       NA|     Vitachrome Inc.|          NYC|     Abel Maclead|      USA|yuki_whobrey@aol.com|        12|\n|       NA|Tekni Collectable...|       Newark|  Kiley Caldarera|      USA|fletcher.flosi@ya...|        13|\n|       NA|     Gift Depot Inc.|  Bridgewater|    Graciela Ruta|      USA| bette_nicka@cox.net|        14|\n|     EMEA|   La Rochelle Gifts|       Nantes|    Cammy Albares|   France|     vinouye@aol.com|        15|\n|       NA|Marta's Replicas Co.|    Cambridge|  Mattie Poquette|      USA|  gladys.rim@rim.org|        16|\n|     EMEA| Toys of Finland Co.|     Helsinki|   Meaghan Garufi|  Finland|yuki_whobrey@aol.com|        17|\n|     EMEA|  Baane Mini Imports|      Stavern|       Gladys Rim|   Norway|fletcher.flosi@ya...|        18|\n|       NA|Diecast Classics ...|    Allentown|     Yuki Whobrey|      USA| bette_nicka@cox.net|        19|\n|       NA|   Land of Toys Inc.|          NYC|   Fletcher Flosi|      USA|     vinouye@aol.com|        20|\n+---------+--------------------+-------------+-----------------+---------+--------------------+----------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "# Rename\ncustomersDF=customersDF.rename_field(\"territory\",\"region\")\ncustomersDF.toDF().show()",
+				"metadata": {
+					"trusted": true,
+					"tags": []
+				},
+				"execution_count": 37,
+				"outputs": [
+					{
+						"name": "stdout",
+						"text": "+--------------------+-------------+-----------------+---------+------+--------------------+----------+\n|        customername|         city|  contactfullname|  country|region|               email|customerid|\n+--------------------+-------------+-----------------+---------+------+--------------------+----------+\n|   Land of Toys Inc.|          NYC|       James Butt|      USA|    NA|  gladys.rim@rim.org|         1|\n|  Reims Collectables|        Reims|Josephine Darakjy|   France|  EMEA|yuki_whobrey@aol.com|         2|\n|     Lyon Souveniers|        Paris|       Art Venere|   France|  EMEA|fletcher.flosi@ya...|         3|\n|   Toys4GrownUps.com|     Pasadena|   Lenna Paprocki|      USA|    NA| bette_nicka@cox.net|         4|\n|Corporate Gift Id...|San Francisco|   Donette Foller|      USA|    NA|     vinouye@aol.com|         5|\n|Technics Stores Inc.|   Burlingame|   Simona Morasca|      USA|    NA|  gladys.rim@rim.org|         6|\n|Daedalus Designs ...|        Lille|   Mitsue Tollner|   France|  EMEA|yuki_whobrey@aol.com|         7|\n|        Herkku Gifts|       Bergen|   Leota Dilliard|   Norway|  EMEA|fletcher.flosi@ya...|         8|\n|     Mini Wheels Co.|San Francisco|      Sage Wieser|      USA|    NA| bette_nicka@cox.net|         9|\n|    Auto Canal Petit|        Paris|     Kris Marrier|   France|  EMEA|     vinouye@aol.com|        10|\n|Australian Collec...|    Melbourne|     Minna Amigon|Australia|  APAC|  gladys.rim@rim.org|        11|\n|     Vitachrome Inc.|          NYC|     Abel Maclead|      USA|    NA|yuki_whobrey@aol.com|        12|\n|Tekni Collectable...|       Newark|  Kiley Caldarera|      USA|    NA|fletcher.flosi@ya...|        13|\n|     Gift Depot Inc.|  Bridgewater|    Graciela Ruta|      USA|    NA| bette_nicka@cox.net|        14|\n|   La Rochelle Gifts|       Nantes|    Cammy Albares|   France|  EMEA|     vinouye@aol.com|        15|\n|Marta's Replicas Co.|    Cambridge|  Mattie Poquette|      USA|    NA|  gladys.rim@rim.org|        16|\n| Toys of Finland Co.|     Helsinki|   Meaghan Garufi|  Finland|  EMEA|yuki_whobrey@aol.com|        17|\n|  Baane Mini Imports|      Stavern|       Gladys Rim|   Norway|  EMEA|fletcher.flosi@ya...|        18|\n|Diecast Classics ...|    Allentown|     Yuki Whobrey|      USA|    NA| bette_nicka@cox.net|        19|\n|   Land of Toys Inc.|          NYC|   Fletcher Flosi|      USA|    NA|     vinouye@aol.com|        20|\n+--------------------+-------------+-----------------+---------+------+--------------------+----------+\nonly showing top 20 rows\n",
+						"output_type": "stream"
+					}
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": "",
+				"metadata": {},
+				"execution_count": null,
+				"outputs": []
+			}
+		]
+	}
+}
